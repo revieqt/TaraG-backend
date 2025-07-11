@@ -1,0 +1,11 @@
+# render.yaml
+services:
+  - type: web
+    name: tarag-backend
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000  # Render uses this internally; Express will bind to it
