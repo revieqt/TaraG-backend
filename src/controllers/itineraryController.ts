@@ -70,4 +70,18 @@ export async function getItineraryById(req: Request, res: Response) {
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch itinerary' });
   }
+}
+
+// Delete itinerary by ID
+export async function deleteItinerary(req: Request, res: Response) {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'id is required' });
+  }
+  try {
+    await admin.firestore().collection('itineraries').doc(id).delete();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to delete itinerary' });
+  }
 } 
