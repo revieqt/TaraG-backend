@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { addItinerary } from '../services/firestoreService';
+import admin from 'firebase-admin';
 
 export async function createItinerary(req: Request, res: Response) {
   try {
@@ -36,5 +37,37 @@ export async function createItinerary(req: Request, res: Response) {
     res.status(201).json({ id });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create itinerary' });
+  }
+}
+
+// Get all itineraries for a user
+export async function getItinerariesByUser(req: Request, res: Response) {
+  const { userID } = req.params;
+  if (!userID) {
+    return res.status(400).json({ error: 'userID is required' });
+  }
+  try {
+    const snapshot = await admin.firestore().collection('itineraries').where('userID', '==', userID).get();
+    const itineraries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json({ itineraries });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch itineraries' });
+  }
+}
+
+// Get itinerary by ID
+export async function getItineraryById(req: Request, res: Response) {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'id is required' });
+  }
+  try {
+    const doc = await admin.firestore().collection('itineraries').doc(id).get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Itinerary not found' });
+    }
+    res.json({ id: doc.id, ...doc.data() });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch itinerary' });
   }
 } 
