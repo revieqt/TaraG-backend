@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import weatherRouter from './routes/weather';
 import aiChatRouter from './routes/aiChat';
+import itineraryRouter from './routes/itinerary';
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/weather', weatherRouter);
 app.use('/api/ai-chat', aiChatRouter);
+app.use('/api/itinerary', itineraryRouter);
 
 // Routes will go here
 app.get('/', (_req, res) => {
