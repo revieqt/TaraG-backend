@@ -11,11 +11,12 @@ export async function createItinerary(req: Request, res: Response) {
       startDate,
       endDate,
       planDaily,
-      locations
+      locations,
+      userID
     } = req.body;
 
     // Basic validation (expand as needed)
-    if (!title || !type || !createdOn || !startDate || !endDate || !locations) {
+    if (!title || !type || !createdOn || !startDate || !endDate || !locations|| !userID) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -27,7 +28,8 @@ export async function createItinerary(req: Request, res: Response) {
       startDate,
       endDate,
       planDaily,
-      locations
+      locations,
+      userID
     };
 
     const id = await addItinerary(itinerary);

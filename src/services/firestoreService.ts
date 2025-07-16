@@ -2,7 +2,7 @@ import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.applicationDefault(), // or use cert for service account
+    credential: admin.credential.applicationDefault(), 
   });
 }
 
