@@ -3,10 +3,12 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import admin from 'firebase-admin';
 import weatherRouter from './routes/weather';
 import aiChatRouter from './routes/aiChat';
 import itineraryRouter from './routes/itinerary';
 import notificationRouter from './routes/notification';
+import usersRouter from './routes/users';
 
 dotenv.config();
 
@@ -27,6 +29,7 @@ app.use('/weather', weatherRouter);
 app.use('/api/ai-chat', aiChatRouter);
 app.use('/api/itinerary', itineraryRouter);
 app.use('/api/notifications', notificationRouter);
+app.use('/api/users', usersRouter);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -59,6 +62,35 @@ export { io };
 // Routes will go here
 app.get('/', (_req, res) => {
   res.send('TaraG Backend is Running');
+});
+
+// Health check endpoint
+app.get('/health', (_req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    message: 'TaraG Backend is healthy'
+  });
+});
+
+// Firebase test endpoint
+app.get('/test-firebase', async (_req, res) => {
+  try {
+    const db = admin.firestore();
+    const testDoc = await db.collection('test').doc('connection').get();
+    res.json({ 
+      status: 'ok', 
+      message: 'Firebase connection successful',
+      exists: testDoc.exists
+    });
+  } catch (error) {
+    console.error('Firebase test error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Firebase connection failed',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 server.listen(PORT, () => {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUserNotifications, markNotificationAsRead, createNewNotification } from '../controllers/notificationController';
+import { getUserNotifications, markNotificationAsRead, createNewNotification, createTestNotification } from '../controllers/notificationController';
 
 const router = Router();
 
@@ -11,5 +11,8 @@ router.put('/:notificationId/read', markNotificationAsRead);
 
 // Create new notification
 router.post('/', createNewNotification);
+
+// Test endpoint to create a sample notification
+router.post('/test/:userId', createTestNotification);
 
 export default router; 
