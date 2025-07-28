@@ -6,7 +6,7 @@ if (!admin.apps.length) {
   try {
     // Try to load from credentials file (for local development)
     const path = require('path');
-    serviceAccount = require(path.join(__dirname, '../../credentials/serviceAccount.json'));
+    serviceAccount = require(path.join(__dirname, '../config/serviceAccount.json'));
   } catch (error) {
     // If file not found, try to use environment variables (for production)
     console.log('Service account file not found, using environment variables');
@@ -28,6 +28,7 @@ if (!admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${serviceAccount.project_id}.appspot.com`,
     });
     console.log('Firebase Admin SDK initialized successfully');
   } catch (error) {

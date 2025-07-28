@@ -66,6 +66,7 @@ export async function getWeeklyWeather(req: Request, res: Response) {
       const dayName = days[new Date(date).getDay()];
       const code = data.daily.weathercode ? data.daily.weathercode[idx] : null;
       result[dayName] = {
+        date: date,
         temperature: data.daily.temperature_2m_max[idx],
         precipitation: data.daily.precipitation_sum[idx],
         humidity: data.daily.relative_humidity_2m_max ? data.daily.relative_humidity_2m_max[idx] : null,

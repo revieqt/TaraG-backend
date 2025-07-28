@@ -9,6 +9,7 @@ import aiChatRouter from './routes/aiChat';
 import itineraryRouter from './routes/itinerary';
 import notificationRouter from './routes/notification';
 import usersRouter from './routes/users';
+import contactRouter from './routes/contact';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/ai-chat', aiChatRouter);
 app.use('/api/itinerary', itineraryRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/contact', contactRouter);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
