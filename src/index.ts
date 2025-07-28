@@ -5,10 +5,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import admin from 'firebase-admin';
 import weatherRouter from './routes/weather';
-import aiChatRouter from './routes/aiChat';
 import itineraryRouter from './routes/itinerary';
-import notificationRouter from './routes/notification';
-import usersRouter from './routes/users';
 import contactRouter from './routes/contact';
 
 dotenv.config();
@@ -27,10 +24,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use('/weather', weatherRouter);
-app.use('/api/ai-chat', aiChatRouter);
 app.use('/api/itinerary', itineraryRouter);
-app.use('/api/notifications', notificationRouter);
-app.use('/api/users', usersRouter);
 app.use('/api/contact', contactRouter);
 
 // Socket.io connection handling
