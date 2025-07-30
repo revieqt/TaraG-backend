@@ -7,6 +7,7 @@ import admin from 'firebase-admin';
 import weatherRouter from './routes/weather';
 import itineraryRouter from './routes/itinerary';
 import contactRouter from './routes/contact';
+import alertRouter from './routes/alert';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use('/weather', weatherRouter);
 app.use('/api/itinerary', itineraryRouter);
 app.use('/api/contact', contactRouter);
+app.use('/api/alerts', alertRouter);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
