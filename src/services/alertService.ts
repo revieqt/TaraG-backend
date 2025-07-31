@@ -72,4 +72,21 @@ export async function getAlertsByLocation(userLocation: UserLocation): Promise<A
   });
   
   return alerts;
+}
+
+export async function deleteAlert(alertId: string): Promise<boolean> {
+  try {
+    const docRef = db.collection('alerts').doc(alertId);
+    const doc = await docRef.get();
+    
+    if (!doc.exists) {
+      throw new Error('Alert not found');
+    }
+    
+    await docRef.delete();
+    return true;
+  } catch (error) {
+    console.error('Error deleting alert:', error);
+    throw error;
+  }
 } 

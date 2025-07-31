@@ -1,5 +1,5 @@
 import express from 'express';
-import { getLatestAlert, createAlert } from '../controllers/alertController';
+import { getLatestAlert, createAlert, deleteAlertController } from '../controllers/alertController';
 
 const router = express.Router();
 
@@ -8,5 +8,8 @@ router.post('/latest', getLatestAlert);
 
 // Create a new alert
 router.post('/', createAlert);
+
+// Delete an alert by ID
+router.delete('/:id', deleteAlertController);
 
 export default router; 

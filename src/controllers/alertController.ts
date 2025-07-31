@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { addAlert, getAlertsByLocation, UserLocation, AlertData } from '../services/alertService';
+import { addAlert, getAlertsByLocation, deleteAlert, UserLocation, AlertData } from '../services/alertService';
 
 export async function getLatestAlert(req: Request, res: Response) {
   try {
@@ -67,5 +67,23 @@ export async function createAlert(req: Request, res: Response) {
     res.status(201).json({ id });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create alert' });
+  }
+}
+
+export async function deleteAlertController(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Alert ID is required' });
+    }
+    
+    await deleteAlert(id);
+    res.json({ success: true, message: 'Alert deleted successfully' });
+  } catch (error: any) {
+    if (error.message === 'Alert not found') {
+      return res.status(404).json({ error: 'Alert not found' });
+    }
+    res.status(500).json({ error: error.message || 'Failed to delete alert' });
   }
 } 

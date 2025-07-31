@@ -8,6 +8,7 @@ import weatherRouter from './routes/weather';
 import itineraryRouter from './routes/itinerary';
 import contactRouter from './routes/contact';
 import alertRouter from './routes/alert';
+import notificationRouter from './routes/notification';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use('/weather', weatherRouter);
 app.use('/api/itinerary', itineraryRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/alerts', alertRouter);
+app.use('/api/notifications', notificationRouter);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
