@@ -17,22 +17,51 @@ export interface NotificationWithId extends NotificationData {
 
 export async function getUserNotifications(userID: string): Promise<NotificationWithId[]> {
   try {
-    const snapshot = await db.collection('notifications')
-      .where('userID', '==', userID)
-      .orderBy('createdOn', 'desc')
-      .get();
-    
-    const notifications: NotificationWithId[] = [];
-    
-    snapshot.forEach(doc => {
-      const data = doc.data() as NotificationData & { state: string; createdOn: any };
-      notifications.push({
-        id: doc.id,
-        ...data
+    // First try with ordering by createdOn
+    try {
+      const snapshot = await db.collection('notifications')
+        .where('userID', '==', userID)
+        .orderBy('createdOn', 'desc')
+        .get();
+      
+      const notifications: NotificationWithId[] = [];
+      
+      snapshot.forEach(doc => {
+        const data = doc.data() as NotificationData & { state: string; createdOn: any };
+        notifications.push({
+          id: doc.id,
+          ...data
+        });
       });
-    });
-    
-    return notifications;
+      
+      return notifications;
+    } catch (indexError: any) {
+      // If index doesn't exist, fall back to simple query without ordering
+      console.log('Composite index not found, falling back to simple query...');
+      
+      const snapshot = await db.collection('notifications')
+        .where('userID', '==', userID)
+        .get();
+      
+      const notifications: NotificationWithId[] = [];
+      
+      snapshot.forEach(doc => {
+        const data = doc.data() as NotificationData & { state: string; createdOn: any };
+        notifications.push({
+          id: doc.id,
+          ...data
+        });
+      });
+      
+      // Sort in memory by createdOn descending
+      notifications.sort((a, b) => {
+        const aTime = a.createdOn?.toDate?.() || a.createdOn;
+        const bTime = b.createdOn?.toDate?.() || b.createdOn;
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      });
+      
+      return notifications;
+    }
   } catch (error) {
     console.error('Error getting user notifications:', error);
     throw error;
