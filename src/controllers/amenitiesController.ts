@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { findNearestAmenity } from '../services/emergencyService';
+import { findNearestAmenity } from '../services/amenitiesService';
 
 export const getNearestAmenity = async (req: Request, res: Response) => {
   try {

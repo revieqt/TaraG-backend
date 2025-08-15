@@ -11,7 +11,7 @@ import alertRouter from './routes/alert';
 import notificationRouter from './routes/notification';
 import userRouter from './routes/user';
 import aiChatRouter from './routes/aiChat';
-import emergencyRouter from './routes/emergency';
+import amenitiesRouter from './routes/amenities';
 
 dotenv.config();
 
@@ -35,7 +35,7 @@ app.use('/api/alerts', alertRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/user', userRouter);
 app.use('/api/ai-chat', aiChatRouter);
-app.use('/api/emergency', emergencyRouter);
+app.use('/api/amenities', amenitiesRouter);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

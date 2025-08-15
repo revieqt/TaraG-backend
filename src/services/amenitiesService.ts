@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export interface EmergencyAmenity {
+export interface Amenity {
   id: string;
   name: string;
   latitude: number;
@@ -14,7 +14,7 @@ export async function findNearestAmenity(
   amenity: string,
   latitude: number,
   longitude: number
-): Promise<EmergencyAmenity[]> {
+): Promise<Amenity[]> {
   const overpassUrl = 'https://overpass-api.de/api/interpreter';
   const query = `
     [out:json][timeout:25];

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getNearestAmenity } from '../controllers/emergencyControler';
+import { getNearestAmenity } from '../controllers/amenitiesController';
 
 const router = Router();
 
