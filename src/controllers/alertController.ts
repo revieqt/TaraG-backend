@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { addAlert, getAlertsByLocation, deleteAlert, UserLocation, AlertData } from '../services/alertService';
+import { addAlert, getAlertsByLocation, deleteAlert, UserLocation, AlertData, loadAndCacheAlerts } from '../services/alertService';
 
 export async function getLatestAlert(req: Request, res: Response) {
   try {
@@ -20,7 +20,11 @@ export async function getLatestAlert(req: Request, res: Response) {
     }
     
     const alerts = await getAlertsByLocation(userLocation);
-    res.json({ alerts });
+    res.json({ 
+      success: true,
+      alerts,
+      count: alerts.length
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch alerts' });
   }
@@ -53,10 +57,16 @@ export async function createAlert(req: Request, res: Response) {
       return res.status(400).json({ error: 'Target array cannot be empty' });
     }
 
+    // Validate severity
+    const validSeverities = ['low', 'medium', 'high'];
+    if (!validSeverities.includes(severity.toLowerCase())) {
+      return res.status(400).json({ error: 'Severity must be one of: low, medium, high' });
+    }
+
     const alertData: AlertData = {
       title,
       note,
-      severity,
+      severity: severity.toLowerCase(),
       createdBy,
       startOn,
       endOn,
@@ -64,7 +74,11 @@ export async function createAlert(req: Request, res: Response) {
     };
 
     const id = await addAlert(alertData);
-    res.status(201).json({ id });
+    res.status(201).json({ 
+      success: true,
+      id,
+      message: 'Alert created successfully'
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create alert' });
   }
@@ -85,5 +99,19 @@ export async function deleteAlertController(req: Request, res: Response) {
       return res.status(404).json({ error: 'Alert not found' });
     }
     res.status(500).json({ error: error.message || 'Failed to delete alert' });
+  }
+}
+
+// New endpoint to manually refresh cache (for testing/admin purposes)
+export async function refreshCache(req: Request, res: Response) {
+  try {
+    const alerts = await loadAndCacheAlerts();
+    res.json({ 
+      success: true, 
+      message: 'Cache refreshed successfully',
+      count: alerts.length
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to refresh cache' });
   }
 } 

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { addItinerary } from '../services/firestoreService';
+import { addItinerary } from '../services/itineraryService';
 import admin from 'firebase-admin';
 
 export async function createItinerary(req: Request, res: Response) {

@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import path from "path";
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import admin from 'firebase-admin';
@@ -28,7 +29,10 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-app.use('/weather', weatherRouter);
+// Serve static files from public at both root and under /api/public (so frontend can use BACKEND_URL)
+app.use(express.static(path.join(__dirname, "../public")));
+app.use('/api/public', express.static(path.join(__dirname, "../public")));
+app.use('/api/weather', weatherRouter);
 app.use('/api/itinerary', itineraryRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/alerts', alertRouter);

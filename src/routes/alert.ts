@@ -1,5 +1,5 @@
 import express from 'express';
-import { getLatestAlert, createAlert, deleteAlertController } from '../controllers/alertController';
+import { getLatestAlert, createAlert, deleteAlertController, refreshCache } from '../controllers/alertController';
 
 const router = express.Router();
 
@@ -11,5 +11,8 @@ router.post('/', createAlert);
 
 // Delete an alert by ID
 router.delete('/:id', deleteAlertController);
+
+// Refresh cache manually (for testing/admin purposes)
+router.post('/refresh-cache', refreshCache);
 
 export default router; 
