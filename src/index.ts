@@ -13,6 +13,7 @@ import notificationRouter from './routes/notification';
 import userRouter from './routes/user';
 import aiChatRouter from './routes/aiChat';
 import amenitiesRouter from './routes/amenities';
+import routeRouter from './routes/routes';
 
 dotenv.config();
 
@@ -29,7 +30,6 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-// Serve static files from public at both root and under /api/public (so frontend can use BACKEND_URL)
 app.use(express.static(path.join(__dirname, "../public")));
 app.use('/api/public', express.static(path.join(__dirname, "../public")));
 app.use('/api/weather', weatherRouter);
@@ -40,6 +40,7 @@ app.use('/api/notifications', notificationRouter);
 app.use('/api/user', userRouter);
 app.use('/api/ai-chat', aiChatRouter);
 app.use('/api/amenities', amenitiesRouter);
+app.use('/api/routes', routeRouter);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
