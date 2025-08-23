@@ -1,4 +1,5 @@
 import admin from '../config/firebase';
+import { ORS_API_KEY } from '../config/apiKeys';
 import axios from 'axios';
 
 const db = admin.firestore();
@@ -32,7 +33,7 @@ export async function getRoutes(data: {
   mode: string;
   alternatives: boolean;
 }) {
-  const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImFlZGFkMzNiMGU1ZDRlZmRiNDMyZDdkMTY2OGU5Y2Q1IiwiaCI6Im11cm11cjY0In0=";
+  const apiKey = ORS_API_KEY;
   const coordinates = data.location.map(loc => [loc.longitude, loc.latitude]);
   const url = `https://api.openrouteservice.org/v2/directions/${data.mode}`;
   const params = {

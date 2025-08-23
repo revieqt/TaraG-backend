@@ -1,5 +1,10 @@
 import { Request, Response } from 'express';
-import { addItinerary } from '../services/itineraryService';
+import {
+  addItinerary,
+  updateItinerary as updateItineraryService,
+  cancelItinerary as cancelItineraryService,
+  markItineraryAsDone as markItineraryAsDoneService
+} from '../services/itineraryService';
 import admin from 'firebase-admin';
 
 export async function createItinerary(req: Request, res: Response) {
@@ -8,7 +13,6 @@ export async function createItinerary(req: Request, res: Response) {
       title,
       description,
       type,
-      createdOn,
       startDate,
       endDate,
       planDaily,
@@ -16,8 +20,7 @@ export async function createItinerary(req: Request, res: Response) {
       userID
     } = req.body;
 
-    // Basic validation (expand as needed)
-    if (!title || !type || !createdOn || !startDate || !endDate || !locations|| !userID) {
+    if (!title || !type || !startDate || !endDate || !locations || !userID) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -25,7 +28,6 @@ export async function createItinerary(req: Request, res: Response) {
       title,
       description,
       type,
-      createdOn,
       startDate,
       endDate,
       planDaily,
@@ -37,6 +39,46 @@ export async function createItinerary(req: Request, res: Response) {
     res.status(201).json({ id });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create itinerary' });
+  }
+}
+
+export async function updateItinerary(req: Request, res: Response) {
+  const { id } = req.params;
+  const data = req.body;
+  if (!id || !data) {
+    return res.status(400).json({ error: 'Missing itinerary id or data' });
+  }
+  try {
+    await updateItineraryService(id, data);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to update itinerary' });
+  }
+}
+
+export async function cancelItinerary(req: Request, res: Response) {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Missing itinerary id' });
+  }
+  try {
+    await cancelItineraryService(id);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to cancel itinerary' });
+  }
+}
+
+export async function markItineraryAsDone(req: Request, res: Response) {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Missing itinerary id' });
+  }
+  try {
+    await markItineraryAsDoneService(id);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to mark itinerary as done' });
   }
 }
 
@@ -84,4 +126,4 @@ export async function deleteItinerary(req: Request, res: Response) {
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to delete itinerary' });
   }
-} 
+}

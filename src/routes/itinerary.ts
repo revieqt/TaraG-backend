@@ -1,6 +1,13 @@
 import express from 'express';
-import { createItinerary } from '../controllers/itineraryController';
-import { getItinerariesByUser, getItineraryById, deleteItinerary } from '../controllers/itineraryController';
+import {
+  createItinerary,
+  getItinerariesByUser,
+  getItineraryById,
+  deleteItinerary,
+  cancelItinerary,
+  updateItinerary,
+  markItineraryAsDone
+} from '../controllers/itineraryController';
 
 const router = express.Router();
 
@@ -15,4 +22,13 @@ router.get('/:id', getItineraryById);
 // Delete itinerary by ID
 router.delete('/:id', deleteItinerary);
 
-export default router; 
+// Cancel itinerary by ID
+router.post('/cancel/:id', cancelItinerary);
+
+// Update itinerary by ID
+router.put('/update/:id', updateItinerary);
+
+// Mark itinerary as done by ID
+router.post('/done/:id', markItineraryAsDone);
+
+export default router;
