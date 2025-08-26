@@ -14,7 +14,7 @@ export async function addItinerary(data: any) {
     today.seconds >= data.startDate.seconds &&
     today.seconds <= data.endDate.seconds
   ) {
-    status = 'current';
+    status = 'ongoing';
   }
 
   const docRef = await db.collection('itineraries').add({
@@ -29,9 +29,23 @@ export async function addItinerary(data: any) {
 
 export async function updateItinerary(id: string, data: any) {
   const now = admin.firestore.Timestamp.now();
+
+  // Determine new status based on new dates
+  let status = 'upcoming';
+  if (data.startDate && data.endDate) {
+    const today = admin.firestore.Timestamp.now();
+    if (today.seconds >= data.startDate.seconds && today.seconds <= data.endDate.seconds) {
+      status = 'ongoing';
+    } else if (today.seconds < data.startDate.seconds) {
+      status = 'upcoming';
+    }
+  }
+
   await db.collection('itineraries').doc(id).update({
     ...data,
     updatedOn: now,
+    status,
+    manuallyUpdated: false,
   });
   return true;
 }
