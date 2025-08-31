@@ -5,6 +5,7 @@ import path from "path";
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import admin from 'firebase-admin';
+import authRouter from './routes/auth';
 import weatherRouter from './routes/weather';
 import itineraryRouter from './routes/itinerary';
 import contactRouter from './routes/contact';
@@ -14,6 +15,7 @@ import userRouter from './routes/user';
 import aiChatRouter from './routes/aiChat';
 import amenitiesRouter from './routes/amenities';
 import routeRouter from './routes/routes';
+import paymentRouter from './routes/payment';
 
 dotenv.config();
 
@@ -32,6 +34,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 app.use('/api/public', express.static(path.join(__dirname, "../public")));
+app.use('/api/auth', authRouter);
 app.use('/api/weather', weatherRouter);
 app.use('/api/itinerary', itineraryRouter);
 app.use('/api/contact', contactRouter);
@@ -41,21 +44,18 @@ app.use('/api/user', userRouter);
 app.use('/api/ai-chat', aiChatRouter);
 app.use('/api/amenities', amenitiesRouter);
 app.use('/api/routes', routeRouter);
+app.use('/api/payment', paymentRouter);
 
-// Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // Join user to their personal room
   socket.on('join-user', (userId: string) => {
     socket.join(`user-${userId}`);
     console.log(`User ${userId} joined room: user-${userId}`);
   });
 
-  // Handle notification creation
   socket.on('create-notification', async (notificationData) => {
     try {
-      // Emit to specific user
       io.to(`user-${notificationData.userID}`).emit('new-notification', notificationData);
     } catch (error) {
       console.error('Error handling notification creation:', error);
