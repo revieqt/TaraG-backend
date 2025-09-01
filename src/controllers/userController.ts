@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { updateProfileImage, updateBio, getUserProfile } from '../services/userService';
+import { updateProfileImage, updateBio, getUserProfile, updateUserStringField, updateUserBooleanField, batchUpdateUserInfo } from '../services/userService';
 
 export async function updateUserProfileImage(req: Request, res: Response) {
   try {
@@ -81,4 +81,105 @@ export async function getUserProfileData(req: Request, res: Response) {
       error: error instanceof Error ? error.message : 'Failed to get user profile' 
     });
   }
-} 
+}
+
+export async function updateUserStringFieldController(req: any, res: Response) {
+  try {
+    const { userID, fieldName, fieldValue } = req.body;
+    const authenticatedUserID = req.user.userId; // From auth middleware
+    
+    if (!userID || !fieldName || fieldValue === undefined) {
+      return res.status(400).json({ error: 'userID, fieldName, and fieldValue are required' });
+    }
+
+    // Ensure user can only update their own profile
+    if (userID !== authenticatedUserID) {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
+
+    if (typeof fieldValue !== 'string') {
+      return res.status(400).json({ error: 'fieldValue must be a string' });
+    }
+
+    await updateUserStringField(userID, fieldName, fieldValue);
+    
+    res.status(200).json({ 
+      message: `${fieldName} updated successfully`,
+      fieldName,
+      fieldValue
+    });
+  } catch (error) {
+    console.error('Error in updateUserStringFieldController:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to update user field' 
+    });
+  }
+}
+
+export async function updateUserBooleanFieldController(req: any, res: Response) {
+  try {
+    const { userID, fieldName, fieldValue } = req.body;
+    const authenticatedUserID = req.user.userId; // From auth middleware
+    
+    if (!userID || !fieldName || fieldValue === undefined) {
+      return res.status(400).json({ error: 'userID, fieldName, and fieldValue are required' });
+    }
+
+    // Ensure user can only update their own profile
+    if (userID !== authenticatedUserID) {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
+
+    if (typeof fieldValue !== 'boolean') {
+      return res.status(400).json({ error: 'fieldValue must be a boolean' });
+    }
+
+    await updateUserBooleanField(userID, fieldName, fieldValue);
+    
+    res.status(200).json({ 
+      message: `${fieldName} updated successfully`,
+      fieldName,
+      fieldValue
+    });
+  } catch (error) {
+    console.error('Error in updateUserBooleanFieldController:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to update user field' 
+    });
+  }
+}
+
+export async function batchUpdateUserInfoController(req: any, res: Response) {
+  try {
+    const { userID, updates } = req.body;
+    const authenticatedUserID = req.user.userId; // From auth middleware
+    
+    if (!userID || !updates || typeof updates !== 'object') {
+      return res.status(400).json({ error: 'userID and updates object are required' });
+    }
+
+    // Ensure user can only update their own profile
+    if (userID !== authenticatedUserID) {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
+
+    // Validate that all update values are strings
+    for (const [fieldName, fieldValue] of Object.entries(updates)) {
+      if (typeof fieldValue !== 'string') {
+        return res.status(400).json({ error: `Field ${fieldName} must be a string` });
+      }
+    }
+
+    await batchUpdateUserInfo(userID, updates as Record<string, string>);
+    
+    res.status(200).json({ 
+      message: 'User information updated successfully',
+      updatedFields: Object.keys(updates)
+    });
+  } catch (error) {
+    console.error('Error in batchUpdateUserInfoController:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to update user information' 
+    });
+  }
+}

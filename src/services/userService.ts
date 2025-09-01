@@ -58,4 +58,91 @@ export async function getUserProfile(userID: string): Promise<any> {
     console.error('Error getting user profile:', error);
     throw new Error('Failed to get user profile');
   }
-} 
+}
+
+export async function updateUserStringField(userID: string, fieldName: string, fieldValue: string): Promise<void> {
+  try {
+    // Validate field name to prevent unauthorized field updates
+    const allowedStringFields = [
+      'fname', 'mname', 'lname', 'username', 'bio', 'contactNumber', 
+      'gender', 'status', 'type', 'profileImage'
+    ];
+    
+    if (!allowedStringFields.includes(fieldName)) {
+      throw new Error(`Field '${fieldName}' is not allowed to be updated`);
+    }
+
+    const updateData: any = {
+      [fieldName]: fieldValue,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection('users').doc(userID).update(updateData);
+  } catch (error) {
+    console.error('Error updating user string field:', error);
+    throw new Error(`Failed to update ${fieldName}`);
+  }
+}
+
+export async function updateUserBooleanField(userID: string, fieldName: string, fieldValue: boolean): Promise<void> {
+  try {
+    // Validate field name to prevent unauthorized field updates
+    const allowedBooleanFields = [
+      'isProUser', 'isFirstLogin', 'safetyState.isInAnEmergency',
+      'publicSettings.isProfilePublic', 'publicSettings.isTravelInfoPublic'
+    ];
+    
+    if (!allowedBooleanFields.includes(fieldName)) {
+      throw new Error(`Field '${fieldName}' is not allowed to be updated`);
+    }
+
+    let updateData: any = {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // Handle nested field updates
+    if (fieldName.includes('.')) {
+      const [parentField, childField] = fieldName.split('.');
+      updateData[`${parentField}.${childField}`] = fieldValue;
+    } else {
+      updateData[fieldName] = fieldValue;
+    }
+
+    await db.collection('users').doc(userID).update(updateData);
+  } catch (error) {
+    console.error('Error updating user boolean field:', error);
+    throw new Error(`Failed to update ${fieldName}`);
+  }
+}
+
+export async function batchUpdateUserInfo(userID: string, updates: Record<string, string>): Promise<void> {
+  try {
+    // Validate field names to prevent unauthorized field updates
+    const allowedStringFields = [
+      'fname', 'mname', 'lname', 'contactNumber'
+    ];
+    
+    const updateData: any = {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // Validate and prepare all updates
+    for (const [fieldName, fieldValue] of Object.entries(updates)) {
+      if (!allowedStringFields.includes(fieldName)) {
+        throw new Error(`Field '${fieldName}' is not allowed to be updated`);
+      }
+      
+      if (typeof fieldValue !== 'string') {
+        throw new Error(`Field '${fieldName}' must be a string`);
+      }
+      
+      updateData[fieldName] = fieldValue.trim();
+    }
+
+    // Perform batch update
+    await db.collection('users').doc(userID).update(updateData);
+  } catch (error) {
+    console.error('Error batch updating user info:', error);
+    throw new Error('Failed to update user information');
+  }
+}

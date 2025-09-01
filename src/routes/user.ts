@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-import { updateUserProfileImage, updateUserBio, getUserProfileData } from '../controllers/userController';
+import { updateUserProfileImage, updateUserBio, getUserProfileData, updateUserStringFieldController, updateUserBooleanFieldController, batchUpdateUserInfoController } from '../controllers/userController';
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
@@ -28,6 +29,15 @@ router.put('/update-bio', updateUserBio);
 
 // Get user profile endpoint
 router.get('/profile/:userID', getUserProfileData);
+
+// Update user string field endpoint (protected)
+router.put('/update-string-field', authMiddleware, updateUserStringFieldController);
+
+// Update user boolean field endpoint (protected)
+router.put('/update-boolean-field', authMiddleware, updateUserBooleanFieldController);
+
+// Batch update user information endpoint (protected)
+router.put('/batch-update', authMiddleware, batchUpdateUserInfoController);
 
 // Error handling middleware for multer
 router.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
