@@ -41,7 +41,7 @@ const generateTokens = (userId: string, email: string) => {
   const accessToken = jwt.sign(
     { userId, email },
     secretKey,
-    { expiresIn: '15m' } // Short-lived access token
+    { expiresIn: '1h' } // Short-lived access token
   );
 
   const refreshToken = jwt.sign(

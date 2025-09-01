@@ -46,26 +46,26 @@ app.use('/api/amenities', amenitiesRouter);
 app.use('/api/routes', routeRouter);
 app.use('/api/payment', paymentRouter);
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+// io.on('connection', (socket) => {
+//   console.log('User connected:', socket.id);
 
-  socket.on('join-user', (userId: string) => {
-    socket.join(`user-${userId}`);
-    console.log(`User ${userId} joined room: user-${userId}`);
-  });
+//   socket.on('join-user', (userId: string) => {
+//     socket.join(`user-${userId}`);
+//     console.log(`User ${userId} joined room: user-${userId}`);
+//   });
 
-  socket.on('create-notification', async (notificationData) => {
-    try {
-      io.to(`user-${notificationData.userID}`).emit('new-notification', notificationData);
-    } catch (error) {
-      console.error('Error handling notification creation:', error);
-    }
-  });
+//   socket.on('create-notification', async (notificationData) => {
+//     try {
+//       io.to(`user-${notificationData.userID}`).emit('new-notification', notificationData);
+//     } catch (error) {
+//       console.error('Error handling notification creation:', error);
+//     }
+//   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
+//   socket.on('disconnect', () => {
+//     console.log('User disconnected:', socket.id);
+//   });
+// });
 
 // Make io available to other modules
 export { io };
