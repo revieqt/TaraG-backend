@@ -89,7 +89,7 @@ export async function updateUserBooleanField(userID: string, fieldName: string, 
     // Validate field name to prevent unauthorized field updates
     const allowedBooleanFields = [
       'isProUser', 'isFirstLogin', 'safetyState.isInAnEmergency',
-      'publicSettings.isProfilePublic', 'publicSettings.isTravelInfoPublic'
+      'publicSettings.isProfilePublic', 'publicSettings.isTravelInfoPublic', 'publicSettings.isPersonalInfoPublic'
     ];
     
     if (!allowedBooleanFields.includes(fieldName)) {
