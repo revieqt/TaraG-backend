@@ -85,11 +85,23 @@ export async function markItineraryAsDone(req: Request, res: Response) {
 // Get all itineraries for a user
 export async function getItinerariesByUser(req: Request, res: Response) {
   const { userID } = req.params;
+  const { status } = req.query;
+  
   if (!userID) {
     return res.status(400).json({ error: 'userID is required' });
   }
+  
+  if (!status || typeof status !== 'string') {
+    return res.status(400).json({ error: 'status is required' });
+  }
+  
   try {
-    const snapshot = await admin.firestore().collection('itineraries').where('userID', '==', userID).get();
+    let query = admin.firestore().collection('itineraries').where('userID', '==', userID);
+    
+    // Filter by status
+    query = query.where('status', '==', status);
+    
+    const snapshot = await query.get();
     const itineraries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.json({ itineraries });
   } catch (error: any) {
