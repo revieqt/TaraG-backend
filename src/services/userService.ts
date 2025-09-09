@@ -146,3 +146,24 @@ export async function batchUpdateUserInfo(userID: string, updates: Record<string
     throw new Error('Failed to update user information');
   }
 }
+
+export async function getUsersByType(userType: string): Promise<any[]> {
+  try {
+    const usersSnapshot = await db.collection('users')
+      .where('type', '==', userType)
+      .get();
+    
+    const users: any[] = [];
+    usersSnapshot.forEach(doc => {
+      users.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    return users;
+  } catch (error) {
+    console.error('Error getting users by type:', error);
+    throw new Error('Failed to get users by type');
+  }
+}

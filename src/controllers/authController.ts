@@ -139,19 +139,26 @@ export const login = async (req: LoginRequest, res: Response) => {
       const authData = await authResponse.json() as any;
       
       console.log('Firebase Auth Response Status:', authResponse.status);
+      console.log('Firebase Auth Response Data:', authData);
+      
       if (!authResponse.ok) {
         console.log('Firebase Auth Error:', authData);
         const errorCode = authData.error?.message || 'UNKNOWN_ERROR';
-        if (errorCode === 'EMAIL_NOT_FOUND') {
-          return res.status(404).json({ 
-            error: 'No account found with this email.',
-            code: 'auth/user-not-found'
-          });
-        } else if (errorCode === 'INVALID_PASSWORD') {
-          return res.status(401).json({ 
-            error: 'Incorrect password.',
-            code: 'auth/wrong-password'
-          });
+        
+        // Handle the new INVALID_LOGIN_CREDENTIALS error
+        if (errorCode === 'INVALID_LOGIN_CREDENTIALS' || errorCode === 'EMAIL_NOT_FOUND' || errorCode === 'INVALID_PASSWORD') {
+          // Check if it's specifically an email issue or password issue
+          if (errorCode === 'EMAIL_NOT_FOUND' || authData.error?.message?.includes('EMAIL')) {
+            return res.status(404).json({ 
+              error: 'No account found with this email.',
+              code: 'auth/user-not-found'
+            });
+          } else {
+            return res.status(401).json({ 
+              error: 'Incorrect password.',
+              code: 'auth/wrong-password'
+            });
+          }
         } else if (errorCode === 'INVALID_EMAIL') {
           return res.status(400).json({ 
             error: 'Invalid email address.',
@@ -650,14 +657,26 @@ export const fetchUserProfileController = async (req: Request, res: Response) =>
       return res.status(400).json({ error: 'Email is required.' });
     }
 
-    // Get user by email
-    const userRecord = await admin.auth().getUserByEmail(email);
-    const userProfile = await fetchUserProfile(userRecord.uid, email);
+    // Get user by email from Firebase Auth
+    try {
+      const userRecord = await admin.auth().getUserByEmail(email);
+      
+      // Fetch user profile from Firestore
+      const userProfile = await fetchUserProfile(userRecord.uid, email);
 
-    res.status(200).json({
-      success: true,
-      user: userProfile
-    });
+      res.status(200).json({
+        success: true,
+        user: userProfile
+      });
+    } catch (firebaseError: any) {
+      if (firebaseError.code === 'auth/user-not-found') {
+        return res.status(404).json({ 
+          error: 'User not found.',
+          code: 'auth/user-not-found'
+        });
+      }
+      throw firebaseError;
+    }
 
   } catch (error: any) {
     console.error('Fetch user profile error:', error);
