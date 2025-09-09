@@ -6,7 +6,7 @@ export interface GroupMember {
   userID: string;
   username: string;
   name: string;
-  bio: string;
+  profileImage: string;
   isApproved: boolean;
   joinedOn: admin.firestore.Timestamp;
 }
@@ -27,7 +27,7 @@ export interface CreateGroupData {
   userID: string;
   username: string;
   name: string;
-  bio: string;
+  profileImage: string;
   itineraryID?: string;
 }
 
@@ -35,7 +35,7 @@ export interface JoinGroupData {
   userID: string;
   username: string;
   name: string;
-  bio: string;
+  profileImage: string;
 }
 
 // Generate a random 8-character invite code
@@ -127,7 +127,7 @@ export async function createGroup(groupName: string, adminData: CreateGroupData)
       userID: adminData.userID,
       username: adminData.username,
       name: adminData.name,
-      bio: adminData.bio,
+      profileImage: adminData.profileImage,
       isApproved: true,
       joinedOn: now
     };
@@ -174,7 +174,7 @@ export async function joinGroup(inviteCode: string, userData: JoinGroupData): Pr
       userID: userData.userID,
       username: userData.username,
       name: userData.name,
-      bio: userData.bio,
+      profileImage: userData.profileImage,
       isApproved: false,
       joinedOn: admin.firestore.Timestamp.now()
     };
@@ -189,8 +189,8 @@ export async function joinGroup(inviteCode: string, userData: JoinGroupData): Pr
   }
 }
 
-// Approve user to join group
-export async function approveUserToGroup(groupID: string, userID: string, adminID: string): Promise<void> {
+// Respond to join request (approve or reject)
+export async function respondJoinRequest(groupID: string, userID: string, adminID: string, response: boolean): Promise<void> {
   try {
     const groupRef = db.collection('groups').doc(groupID);
     const groupDoc = await groupRef.get();
@@ -203,10 +203,10 @@ export async function approveUserToGroup(groupID: string, userID: string, adminI
     
     // Check if the requester is an admin
     if (!groupData.admins.includes(adminID)) {
-      throw new Error('Only group admins can approve members');
+      throw new Error('Only group admins can respond to join requests');
     }
 
-    // Find the member to approve
+    // Find the member
     const memberIndex = groupData.members.findIndex(member => member.userID === userID);
     if (memberIndex === -1) {
       throw new Error('User is not a member of this group');
@@ -216,19 +216,115 @@ export async function approveUserToGroup(groupID: string, userID: string, adminI
       throw new Error('User is already approved');
     }
 
-    // Update the member's approval status
-    const updatedMembers = [...groupData.members];
-    updatedMembers[memberIndex] = {
-      ...updatedMembers[memberIndex],
-      isApproved: true
-    };
+    let updatedMembers = [...groupData.members];
+
+    if (response) {
+      // Approve: Update the member's approval status
+      updatedMembers[memberIndex] = {
+        ...updatedMembers[memberIndex],
+        isApproved: true
+      };
+    } else {
+      // Reject: Remove the user from members array
+      updatedMembers = updatedMembers.filter(member => member.userID !== userID);
+    }
 
     await groupRef.update({
       members: updatedMembers,
       updatedOn: admin.firestore.Timestamp.now()
     });
   } catch (error) {
-    console.error('Error approving user to group:', error);
+    console.error('Error responding to join request:', error);
+    throw error;
+  }
+}
+
+// Promote user to admin
+export async function promoteUserToAdmin(groupID: string, userID: string, adminID: string): Promise<void> {
+  try {
+    const groupRef = db.collection('groups').doc(groupID);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new Error('Group not found');
+    }
+
+    const groupData = groupDoc.data() as Group;
+    
+    // Check if the requester is an admin
+    if (!groupData.admins.includes(adminID)) {
+      throw new Error('Only group admins can promote users');
+    }
+
+    // Check if user is already an admin
+    if (groupData.admins.includes(userID)) {
+      throw new Error('User is already an admin');
+    }
+
+    // Check if user is an approved member
+    const member = groupData.members.find(member => member.userID === userID);
+    if (!member) {
+      throw new Error('User is not a member of this group');
+    }
+
+    if (!member.isApproved) {
+      throw new Error('User must be an approved member to become admin');
+    }
+
+    // Add user to admins array
+    const updatedAdmins = [...groupData.admins, userID];
+
+    await groupRef.update({
+      admins: updatedAdmins,
+      updatedOn: admin.firestore.Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error promoting user to admin:', error);
+    throw error;
+  }
+}
+
+// Kick user from group
+export async function kickUserFromGroup(groupID: string, userID: string, adminID: string): Promise<void> {
+  try {
+    const groupRef = db.collection('groups').doc(groupID);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new Error('Group not found');
+    }
+
+    const groupData = groupDoc.data() as Group;
+    
+    // Check if the requester is an admin
+    if (!groupData.admins.includes(adminID)) {
+      throw new Error('Only group admins can kick users');
+    }
+
+    // Check if user exists in the group
+    const memberExists = groupData.members.some(member => member.userID === userID);
+    if (!memberExists) {
+      throw new Error('User is not a member of this group');
+    }
+
+    // Prevent admin from kicking themselves
+    if (userID === adminID) {
+      throw new Error('Admin cannot kick themselves');
+    }
+
+    // Remove user from members array
+    const updatedMembers = groupData.members.filter(member => member.userID !== userID);
+    
+    // Remove user from admins array if they are an admin
+    const updatedAdmins = groupData.admins.filter(admin => admin !== userID);
+
+    await groupRef.update({
+      members: updatedMembers,
+      admins: updatedAdmins,
+      updatedOn: admin.firestore.Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error kicking user from group:', error);
     throw error;
   }
 }

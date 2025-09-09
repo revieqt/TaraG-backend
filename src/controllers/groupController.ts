@@ -23,7 +23,7 @@ interface CreateGroupRequest extends AuthRequest {
     userID: string;
     username: string;
     name: string;
-    bio: string;
+    profileImage: string;
     itineraryID?: string;
   };
 }
@@ -34,11 +34,28 @@ interface JoinGroupRequest extends AuthRequest {
     userID: string;
     username: string;
     name: string;
-    bio: string;
+    profileImage: string;
   };
 }
 
-interface ApproveUserRequest extends AuthRequest {
+interface RespondJoinRequest extends AuthRequest {
+  body: {
+    groupID: string;
+    userID: string;
+    adminID: string;
+    response: boolean;
+  };
+}
+
+interface PromoteUserRequest extends AuthRequest {
+  body: {
+    groupID: string;
+    userID: string;
+    adminID: string;
+  };
+}
+
+interface KickUserRequest extends AuthRequest {
   body: {
     groupID: string;
     userID: string;
@@ -122,12 +139,12 @@ export const createGroup = async (req: CreateGroupRequest, res: Response) => {
   try {
     console.log('🆕 Creating new group:', req.body.groupName);
     
-    const { groupName, userID, username, name, bio, itineraryID } = req.body;
+    const { groupName, userID, username, name, profileImage, itineraryID } = req.body;
     
-    if (!groupName || !userID || !username || !name || !bio) {
+    if (!groupName || !userID || !username || !name || !profileImage) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Group name, userID, username, name, and bio are required' 
+        message: 'Group name, userID, username, name, and profileImage are required' 
       });
     }
 
@@ -135,7 +152,7 @@ export const createGroup = async (req: CreateGroupRequest, res: Response) => {
       userID,
       username,
       name,
-      bio,
+      profileImage,
       itineraryID
     };
 
@@ -162,12 +179,12 @@ export const joinGroup = async (req: JoinGroupRequest, res: Response) => {
   try {
     console.log('👥 User joining group with invite code:', req.body.inviteCode);
     
-    const { inviteCode, userID, username, name, bio } = req.body;
+    const { inviteCode, userID, username, name, profileImage } = req.body;
     
-    if (!inviteCode || !userID || !username || !name || !bio) {
+    if (!inviteCode || !userID || !username || !name || !profileImage) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Invite code, userID, username, name, and bio are required' 
+        message: 'Invite code, userID, username, name, and profileImage are required' 
       });
     }
 
@@ -175,7 +192,7 @@ export const joinGroup = async (req: JoinGroupRequest, res: Response) => {
       userID,
       username,
       name,
-      bio
+      profileImage
     };
 
     await groupService.joinGroup(inviteCode, userData);
@@ -195,10 +212,41 @@ export const joinGroup = async (req: JoinGroupRequest, res: Response) => {
   }
 };
 
-// Approve user to join group
-export const approveUserToGroup = async (req: ApproveUserRequest, res: Response) => {
+// Respond to join request (approve or reject)
+export const respondJoinRequest = async (req: RespondJoinRequest, res: Response) => {
   try {
-    console.log('✅ Approving user to group:', req.body.groupID);
+    console.log('📝 Responding to join request for group:', req.body.groupID);
+    
+    const { groupID, userID, adminID, response } = req.body;
+    
+    if (!groupID || !userID || !adminID || typeof response !== 'boolean') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Group ID, userID, adminID, and response (boolean) are required' 
+      });
+    }
+
+    await groupService.respondJoinRequest(groupID, userID, adminID, response);
+    
+    console.log(`✅ Successfully ${response ? 'approved' : 'rejected'} user join request`);
+    
+    res.status(200).json({
+      success: true,
+      message: `User ${response ? 'approved' : 'rejected'} successfully`
+    });
+  } catch (error) {
+    console.error('❌ Error responding to join request:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to respond to join request'
+    });
+  }
+};
+
+// Promote user to admin
+export const promoteUserToAdmin = async (req: PromoteUserRequest, res: Response) => {
+  try {
+    console.log('⬆️ Promoting user to admin in group:', req.body.groupID);
     
     const { groupID, userID, adminID } = req.body;
     
@@ -209,19 +257,50 @@ export const approveUserToGroup = async (req: ApproveUserRequest, res: Response)
       });
     }
 
-    await groupService.approveUserToGroup(groupID, userID, adminID);
+    await groupService.promoteUserToAdmin(groupID, userID, adminID);
     
-    console.log('✅ Successfully approved user to group');
+    console.log('✅ Successfully promoted user to admin');
     
     res.status(200).json({
       success: true,
-      message: 'User approved successfully'
+      message: 'User promoted to admin successfully'
     });
   } catch (error) {
-    console.error('❌ Error approving user:', error);
+    console.error('❌ Error promoting user to admin:', error);
     res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to approve user'
+      message: error instanceof Error ? error.message : 'Failed to promote user to admin'
+    });
+  }
+};
+
+// Kick user from group
+export const kickUserFromGroup = async (req: KickUserRequest, res: Response) => {
+  try {
+    console.log('👢 Kicking user from group:', req.body.groupID);
+    
+    const { groupID, userID, adminID } = req.body;
+    
+    if (!groupID || !userID || !adminID) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Group ID, userID, and adminID are required' 
+      });
+    }
+
+    await groupService.kickUserFromGroup(groupID, userID, adminID);
+    
+    console.log('✅ Successfully kicked user from group');
+    
+    res.status(200).json({
+      success: true,
+      message: 'User kicked from group successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error kicking user from group:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to kick user from group'
     });
   }
 };
