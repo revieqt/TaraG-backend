@@ -307,10 +307,8 @@ export async function kickUserFromGroup(groupID: string, userID: string, adminID
       throw new Error('User is not a member of this group');
     }
 
-    // Prevent admin from kicking themselves
-    if (userID === adminID) {
-      throw new Error('Admin cannot kick themselves');
-    }
+    // Allow admin to kick themselves (for leave group functionality)
+    // Removed the restriction that prevented admins from kicking themselves
 
     // Remove user from members array
     const updatedMembers = groupData.members.filter(member => member.userID !== userID);
@@ -325,6 +323,85 @@ export async function kickUserFromGroup(groupID: string, userID: string, adminID
     });
   } catch (error) {
     console.error('Error kicking user from group:', error);
+    throw error;
+  }
+}
+
+// Link itinerary to group
+export async function linkGroupItinerary(groupID: string, itineraryID: string, adminID: string): Promise<void> {
+  try {
+    const groupRef = db.collection('groups').doc(groupID);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new Error('Group not found');
+    }
+
+    const groupData = groupDoc.data() as Group;
+    
+    // Check if the requester is an admin
+    if (!groupData.admins.includes(adminID)) {
+      throw new Error('Only group admins can link itineraries');
+    }
+
+    await groupRef.update({
+      itineraryID: itineraryID,
+      updatedOn: admin.firestore.Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error linking itinerary to group:', error);
+    throw error;
+  }
+}
+
+// Delete/unlink itinerary from group
+export async function deleteGroupItinerary(groupID: string, adminID: string): Promise<void> {
+  try {
+    const groupRef = db.collection('groups').doc(groupID);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new Error('Group not found');
+    }
+
+    const groupData = groupDoc.data() as Group;
+    
+    // Check if the requester is an admin
+    if (!groupData.admins.includes(adminID)) {
+      throw new Error('Only group admins can unlink itineraries');
+    }
+
+    await groupRef.update({
+      itineraryID: '',
+      updatedOn: admin.firestore.Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error unlinking itinerary from group:', error);
+    throw error;
+  }
+}
+
+// Delete entire group
+export async function deleteGroup(groupID: string, adminID: string): Promise<void> {
+  try {
+    const groupRef = db.collection('groups').doc(groupID);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new Error('Group not found');
+    }
+
+    const groupData = groupDoc.data() as Group;
+    
+    // Check if the requester is an admin
+    if (!groupData.admins.includes(adminID)) {
+      throw new Error('Only group admins can delete groups');
+    }
+
+    // Delete the group document
+    await groupRef.delete();
+  } catch (error) {
+    console.error('Error deleting group:', error);
     throw error;
   }
 }

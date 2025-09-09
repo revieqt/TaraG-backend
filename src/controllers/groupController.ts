@@ -63,6 +63,28 @@ interface KickUserRequest extends AuthRequest {
   };
 }
 
+interface LinkItineraryRequest extends AuthRequest {
+  body: {
+    groupID: string;
+    itineraryID: string;
+    adminID: string;
+  };
+}
+
+interface DeleteItineraryRequest extends AuthRequest {
+  body: {
+    groupID: string;
+    adminID: string;
+  };
+}
+
+interface DeleteGroupRequest extends AuthRequest {
+  body: {
+    groupID: string;
+    adminID: string;
+  };
+}
+
 // Get all groups where user is a member
 export const getGroups = async (req: GetGroupsRequest, res: Response) => {
   try {
@@ -301,6 +323,99 @@ export const kickUserFromGroup = async (req: KickUserRequest, res: Response) => 
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to kick user from group'
+    });
+  }
+};
+
+// Link itinerary to group
+export const linkGroupItinerary = async (req: LinkItineraryRequest, res: Response) => {
+  try {
+    console.log('🔗 Linking itinerary to group:', req.body.groupID);
+    
+    const { groupID, itineraryID, adminID } = req.body;
+    
+    if (!groupID || !itineraryID || !adminID) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Group ID, itinerary ID, and admin ID are required' 
+      });
+    }
+
+    await groupService.linkGroupItinerary(groupID, itineraryID, adminID);
+    
+    console.log('✅ Successfully linked itinerary to group');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Itinerary linked to group successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error linking itinerary to group:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to link itinerary to group'
+    });
+  }
+};
+
+// Delete/unlink itinerary from group
+export const deleteGroupItinerary = async (req: DeleteItineraryRequest, res: Response) => {
+  try {
+    console.log('🗑️ Unlinking itinerary from group:', req.body.groupID);
+    
+    const { groupID, adminID } = req.body;
+    
+    if (!groupID || !adminID) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Group ID and admin ID are required' 
+      });
+    }
+
+    await groupService.deleteGroupItinerary(groupID, adminID);
+    
+    console.log('✅ Successfully unlinked itinerary from group');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Itinerary unlinked from group successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error unlinking itinerary from group:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to unlink itinerary from group'
+    });
+  }
+};
+
+// Delete entire group
+export const deleteGroup = async (req: DeleteGroupRequest, res: Response) => {
+  try {
+    console.log('🗑️ Deleting group:', req.body.groupID);
+    
+    const { groupID, adminID } = req.body;
+    
+    if (!groupID || !adminID) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Group ID and admin ID are required' 
+      });
+    }
+
+    await groupService.deleteGroup(groupID, adminID);
+    
+    console.log('✅ Successfully deleted group');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Group deleted successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error deleting group:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to delete group'
     });
   }
 };
