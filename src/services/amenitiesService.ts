@@ -11,17 +11,35 @@ export interface Amenity {
 }
 
 export async function findNearestAmenity(
-  amenity: string,
-  latitude: number,
-  longitude: number
+  amenity?: string,
+  latitude?: number,
+  longitude?: number,
+  tourism?: string,
+  aeroway?: string
 ): Promise<Amenity[]> {
+  if (!latitude || !longitude) {
+    throw new Error('Latitude and longitude are required');
+  }
+
   const overpassUrl = 'https://overpass-api.de/api/interpreter';
+  
+  let queryConditions = '';
+  if (amenity) {
+    queryConditions = `["amenity"="${amenity}"]`;
+  } else if (tourism) {
+    queryConditions = `["tourism"="${tourism}"]`;
+  } else if (aeroway) {
+    queryConditions = `["aeroway"="${aeroway}"]`;
+  } else {
+    throw new Error('At least one of amenity, tourism, or aeroway must be provided');
+  }
+
   const query = `
     [out:json][timeout:25];
     (
-      node["amenity"="${amenity}"](around:5000,${latitude},${longitude});
-      way["amenity"="${amenity}"](around:5000,${latitude},${longitude});
-      relation["amenity"="${amenity}"](around:5000,${latitude},${longitude});
+      node${queryConditions}(around:5000,${latitude},${longitude});
+      way${queryConditions}(around:5000,${latitude},${longitude});
+      relation${queryConditions}(around:5000,${latitude},${longitude});
     );
     out center tags;
   `;
@@ -31,15 +49,18 @@ export async function findNearestAmenity(
   });
 
   const elements = response.data.elements || [];
-  return elements.map((el: any) => ({
-    id: el.id?.toString(),
-    name: el.tags?.name || `Unknown ${amenity.charAt(0).toUpperCase() + amenity.slice(1)}`,
-    latitude: el.lat || el.center?.lat,
-    longitude: el.lon || el.center?.lon,
-    address:
-      el.tags?.['addr:full'] ||
-      `${el.tags?.['addr:street'] || ''} ${el.tags?.['addr:city'] || ''}`.trim(),
-    phone: el.tags?.phone || el.tags?.contact_phone || null,
-    website: el.tags?.website || el.tags?.contact_website || null,
-  }));
+  return elements.map((el: any) => {
+    const category = amenity || tourism || aeroway || 'location';
+    return {
+      id: el.id?.toString(),
+      name: el.tags?.name || `Unknown ${category.charAt(0).toUpperCase() + category.slice(1)}`,
+      latitude: el.lat || el.center?.lat,
+      longitude: el.lon || el.center?.lon,
+      address:
+        el.tags?.['addr:full'] ||
+        `${el.tags?.['addr:street'] || ''} ${el.tags?.['addr:city'] || ''}`.trim(),
+      phone: el.tags?.phone || el.tags?.contact_phone || null,
+      website: el.tags?.website || el.tags?.contact_website || null,
+    };
+  });
 }

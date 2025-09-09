@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import { FIREBASE_WEB_API_KEY, FIREBASE_STORAGE_BUCKET } from './apiKeys';
 
 if (!admin.apps.length) {
   let serviceAccount;

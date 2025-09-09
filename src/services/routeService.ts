@@ -23,37 +23,83 @@ export async function deleteRoute(id: string) {
   return { success: true };
 }
 
-export async function getSavedRoutes(userID: string) {
-  const snapshot = await db.collection('routes').where('userID', '==', userID).get();
+export async function getSavedRoutes(userID: string, status: string) {
+  const snapshot = await db.collection('routes')
+    .where('userID', '==', userID)
+    .where('status', '==', status)
+    .get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
 export async function getRoutes(data: {
   location: Array<{ latitude: number; longitude: number }>;
   mode: string;
-  alternatives: boolean;
 }) {
-  const apiKey = ORS_API_KEY;
-  const coordinates = data.location.map(loc => [loc.longitude, loc.latitude]);
-  const url = `https://api.openrouteservice.org/v2/directions/${data.mode}`;
-  const params = {
-    coordinates,
-    ...(data.alternatives ? { alternative_routes: { target_count: 3, share_factor: 0.6, weight_factor: 1.6 } } : {}),
-  };
+  try {
+    const apiKey = ORS_API_KEY;
+    const coordinates = data.location.map(loc => [loc.longitude, loc.latitude]);
+    const url = `https://api.openrouteservice.org/v2/directions/${data.mode}`;
+    const params = {
+      coordinates,
+      instructions: true,
+      geometry: true,
+      elevation: false,
+      extra_info: ['waytype', 'surface'],
+      continue_straight: false,
+      format: 'json'
+    };
 
-  const response = await axios.post(url, params, {
-    headers: {
-      Authorization: apiKey,
-      'Content-Type': 'application/json',
-    },
-  });
+    console.log('🗺️ Calling OpenRouteService:', { url, coordinates, mode: data.mode });
 
-  // Handle both single and alternative routes
-  const routes = response.data.routes || [response.data.route];
-  return routes.map((route: any, idx: number) => ({
-    id: route.id || `route_${idx}`,
-    distance: (route.summary.distance / 1000).toFixed(2), // km
-    duration: Math.round(route.summary.duration / 60), // minutes
-    geometry: route.geometry.coordinates.map(([lng, lat]: [number, number]) => [lat, lng]),
-  }));
+    const response = await axios.post(url, params, {
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('✅ OpenRouteService response:', response.status);
+
+    // Handle single route only
+    const route = response.data.routes ? response.data.routes[0] : response.data.route;
+    
+    if (!route) {
+      throw new Error('No route found in response');
+    }
+
+    // Process segments with steps
+    const segments = route.segments?.map((segment: any) => ({
+      distance: segment.distance,
+      duration: segment.duration,
+      steps: segment.steps?.map((step: any) => ({
+        distance: step.distance,
+        duration: step.duration,
+        instruction: step.instruction,
+        name: step.name || undefined,
+        way_points: step.way_points
+      })) || []
+    })) || [];
+
+    const result = {
+      geometry: {
+        coordinates: route.geometry?.coordinates || [],
+        type: route.geometry?.type || 'LineString'
+      },
+      distance: route.summary.distance, // meters
+      duration: route.summary.duration, // seconds
+      bbox: route.bbox || undefined,
+      segments
+    };
+
+    console.log('🎯 Route result with segments:', {
+      ...result,
+      segmentCount: segments.length,
+      totalSteps: segments.reduce((acc: number, seg: any) => acc + (seg.steps?.length || 0), 0)
+    });
+    
+    return result;
+  } catch (error) {
+    console.error('❌ OpenRouteService error:', error);
+    throw error;
+  }
 }
