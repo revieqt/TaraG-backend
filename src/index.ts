@@ -16,6 +16,7 @@ import aiChatRouter from './routes/aiChat';
 import amenitiesRouter from './routes/amenities';
 import routeRouter from './routes/routes';
 import paymentRouter from './routes/payment';
+import groupRouter from './routes/group';
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.use('/api/ai-chat', aiChatRouter);
 app.use('/api/amenities', amenitiesRouter);
 app.use('/api/routes', routeRouter);
 app.use('/api/payment', paymentRouter);
+app.use('/api/groups', groupRouter);
 
 // io.on('connection', (socket) => {
 //   console.log('User connected:', socket.id);
