@@ -1,117 +1,144 @@
 import { Request, Response } from 'express';
-import { addAlert, getAlertsByLocation, deleteAlert, UserLocation, AlertData, loadAndCacheAlerts } from '../services/alertService';
+import {
+  getFilteredAlerts as serviceGetFilteredAlerts,
+  getAlertsByLocation as serviceGetAlertsByLocation,
+  createAlert as serviceCreateAlert,
+  updateAlert as serviceUpdateAlert,
+  deleteAlert as serviceDeleteAlert,
+} from '../services/alertService';
 
-export async function getLatestAlert(req: Request, res: Response) {
+interface AuthRequest extends Request {
+  user?: any;
+}
+
+export async function getFilteredAlerts(req: Request, res: Response) {
   try {
-    const userLocation: UserLocation = req.body;
-    
-    // Basic validation - at least one location field should be provided
-    const locationFields = [
-      userLocation.suburb,
-      userLocation.city,
-      userLocation.town,
-      userLocation.state,
-      userLocation.region,
-      userLocation.country
-    ];
-    
-    if (!locationFields.some(field => field)) {
-      return res.status(400).json({ error: 'At least one location field is required' });
+    const { locations, date, severity, search } = req.query;
+    const filters: {
+      locations?: string[];
+      date?: string;
+      severity?: string;
+      search?: string;
+    } = {};
+
+    if (typeof locations === 'string' && locations.trim()) {
+      filters.locations = locations.split(',').map(loc => loc.trim());
     }
-    
-    const alerts = await getAlertsByLocation(userLocation);
-    res.json({ 
-      success: true,
-      alerts,
-      count: alerts.length
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to fetch alerts' });
+    if (typeof date === 'string') {
+      filters.date = date;
+    }
+    if (typeof severity === 'string') {
+      filters.severity = severity;
+    }
+    if (typeof search === 'string') {
+      filters.search = search;
+    }
+
+    const alerts = await serviceGetFilteredAlerts(filters);
+    res.json(alerts);
+  } catch (error) {
+    console.error('Error fetching filtered alerts:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }
 
-export async function createAlert(req: Request, res: Response) {
+export async function getAlertsByLocation(req: Request, res: Response) {
   try {
-    const {
+    console.log('getAlertsByLocation called with query:', req.query);
+    
+    const { locations } = req.query;
+    if (!locations || typeof locations !== 'string') {
+      console.error('Missing or invalid locations parameter:', locations);
+      return res.status(400).json({ message: 'locations query parameter is required' });
+    }
+    
+    const locArray = locations.split(',').map(loc => loc.trim());
+    console.log('Parsed locations array:', locArray);
+    
+    const alerts = await serviceGetAlertsByLocation(locArray);
+    console.log('Retrieved alerts:', alerts.length);
+    
+    res.json(alerts);
+  } catch (error) {
+    console.error('Error fetching alerts by location:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+export async function createAlert(req: AuthRequest, res: Response) {
+  try {
+    const { title, description, severity, startOn, endOn, locations } = req.body;
+    if (!title || !description || !severity || !startOn || !endOn || !locations) {
+      console.error('Missing required fields:', req.body);
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    const id = await serviceCreateAlert({
       title,
-      note,
+      description,
       severity,
-      createdBy,
-      startOn,
-      endOn,
-      target
-    }: AlertData = req.body;
+      startOn: new Date(startOn),
+      endOn: new Date(endOn),
+      locations,
+    });
+    res.status(201).json({ id });
+  } catch (error) {
+    console.error('Error creating alert:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
 
-    // Basic validation
-    if (!title || !note || !severity || !createdBy || !startOn || !endOn || !target) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Validate that target is an array
-    if (!Array.isArray(target)) {
-      return res.status(400).json({ error: 'Target must be an array of strings' });
-    }
-
-    // Validate that target array is not empty
-    if (target.length === 0) {
-      return res.status(400).json({ error: 'Target array cannot be empty' });
-    }
-
-    // Validate severity
-    const validSeverities = ['low', 'medium', 'high'];
-    if (!validSeverities.includes(severity.toLowerCase())) {
-      return res.status(400).json({ error: 'Severity must be one of: low, medium, high' });
-    }
-
-    const alertData: AlertData = {
-      title,
-      note,
-      severity: severity.toLowerCase(),
-      createdBy,
-      startOn,
-      endOn,
-      target
+// Helper function to create a test alert (for debugging)
+export async function createTestAlert(req: Request, res: Response) {
+  try {
+    console.log('Creating test alert...');
+    const testAlert = {
+      title: 'Test Alert',
+      description: 'This is a test alert for debugging purposes',
+      severity: 'medium' as const,
+      startOn: new Date(),
+      endOn: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+      locations: ['global', 'melbourne', 'australia'],
     };
-
-    const id = await addAlert(alertData);
-    res.status(201).json({ 
-      success: true,
-      id,
-      message: 'Alert created successfully'
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to create alert' });
+    
+    const id = await serviceCreateAlert(testAlert);
+    console.log('Test alert created with ID:', id);
+    res.status(201).json({ id, message: 'Test alert created successfully' });
+  } catch (error) {
+    console.error('Error creating test alert:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }
 
-export async function deleteAlertController(req: Request, res: Response) {
+export async function updateAlert(req: AuthRequest, res: Response) {
   try {
-    const { id } = req.params;
-    
-    if (!id) {
-      return res.status(400).json({ error: 'Alert ID is required' });
-    }
-    
-    await deleteAlert(id);
-    res.json({ success: true, message: 'Alert deleted successfully' });
-  } catch (error: any) {
-    if (error.message === 'Alert not found') {
-      return res.status(404).json({ error: 'Alert not found' });
-    }
-    res.status(500).json({ error: error.message || 'Failed to delete alert' });
+    const alertId = req.params.id;
+    const { title, description, severity, startOn, endOn, locations } = req.body;
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (severity !== undefined) updateData.severity = severity;
+    if (startOn !== undefined) updateData.startOn = new Date(startOn);
+    if (endOn !== undefined) updateData.endOn = new Date(endOn);
+    if (locations !== undefined) updateData.locations = locations;
+
+    await serviceUpdateAlert(alertId, updateData);
+    res.json({ message: 'Alert updated' });
+  } catch (error) {
+    console.error('Error updating alert:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }
 
-// New endpoint to manually refresh cache (for testing/admin purposes)
-export async function refreshCache(req: Request, res: Response) {
+export async function deleteAlert(req: AuthRequest, res: Response) {
   try {
-    const alerts = await loadAndCacheAlerts();
-    res.json({ 
-      success: true, 
-      message: 'Cache refreshed successfully',
-      count: alerts.length
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to refresh cache' });
+    const alertId = req.params.id;
+    await serviceDeleteAlert(alertId);
+    res.json({ message: 'Alert deleted' });
+  } catch (error) {
+    console.error('Error deleting alert:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-} 
+}

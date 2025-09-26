@@ -28,42 +28,62 @@ function getCurrentWeekDates() {
 }
 
 export async function getCurrentWeather(req: Request, res: Response) {
-  const { latitude, longitude } = req.query;
+  const { latitude, longitude, date } = req.query;
   if (!latitude || !longitude) {
     return res.status(400).json({ error: 'latitude and longitude query parameters are required' });
   }
 
   try {
-    const data = await getWeather(Number(latitude), Number(longitude));
+    // If date is provided, get weather for that specific date
+    const targetDate = date ? String(date) : new Date().toISOString().split('T')[0];
+    
+    // For historical/future dates, we need to specify date range
+    let weatherData;
+    if (date) {
+      weatherData = await getWeather(Number(latitude), Number(longitude), targetDate, targetDate);
+    } else {
+      weatherData = await getWeather(Number(latitude), Number(longitude));
+    }
 
-    const today = new Date().toISOString().split('T')[0];
-    const todayIndex = data.daily?.time?.findIndex((d: string) => d === today) ?? -1;
+    const targetIndex = weatherData.daily?.time?.findIndex((d: string) => d === targetDate) ?? -1;
 
     let precipitation: number | null = null;
-    if (todayIndex !== -1 && data.daily?.precipitation_sum) {
-      precipitation = data.daily.precipitation_sum[todayIndex] ?? null;
+    let temperature: number | null = null;
+    let weatherCode: number | null = null;
+
+    if (targetIndex !== -1 && weatherData.daily) {
+      // For specific dates, use daily data
+      precipitation = weatherData.daily.precipitation_sum?.[targetIndex] ?? null;
+      temperature = weatherData.daily.temperature_2m_max?.[targetIndex] ?? null;
+      weatherCode = weatherData.daily.weathercode?.[targetIndex] ?? null;
     }
 
     // Calculate daily max humidity from hourly data
     let humidity: number | null = null;
-    if (data.hourly?.relative_humidity_2m && data.hourly?.time) {
-      const todayHumidity = data.hourly.relative_humidity_2m.filter(
-        (_: number, idx: number) => data.hourly.time[idx].startsWith(today)
+    if (weatherData.hourly?.relative_humidity_2m && weatherData.hourly?.time) {
+      const dayHumidity = weatherData.hourly.relative_humidity_2m.filter(
+        (_: number, idx: number) => weatherData.hourly.time[idx].startsWith(targetDate)
       );
-      if (todayHumidity.length > 0) {
-        humidity = Math.max(...todayHumidity);
+      if (dayHumidity.length > 0) {
+        humidity = Math.max(...dayHumidity);
       }
     }
 
-    const currentWeather = data.current_weather;
-    if (!currentWeather) {
-      throw new Error('Current weather data not available');
+    // For current weather (no date specified), use current_weather data
+    if (!date && weatherData.current_weather) {
+      temperature = weatherData.current_weather.temperature;
+      weatherCode = weatherData.current_weather.weathercode;
+    }
+
+    // If we still don't have weather data, return error
+    if (temperature === null || weatherCode === null) {
+      return res.status(404).json({ error: 'Weather data not available for the specified date and location' });
     }
 
     const result = {
-      temperature: currentWeather.temperature,
-      weatherCode: currentWeather.weathercode,
-      weatherType: weatherCodeMap[currentWeather.weathercode] || 'Unknown',
+      temperature,
+      weatherCode,
+      weatherType: weatherCodeMap[weatherCode] || 'Unknown',
       precipitation,
       humidity
     };
@@ -71,7 +91,7 @@ export async function getCurrentWeather(req: Request, res: Response) {
     res.json(result);
   } catch (error) {
     console.error('🌤️ Weather API error:', error);
-    res.status(500).json({ error: 'Failed to fetch current weather data' });
+    res.status(500).json({ error: 'Failed to fetch weather data' });
   }
 }
 

@@ -1,36 +1,54 @@
 import { Request, Response } from 'express';
 import { updateProfileImage, updateBio, getUserProfile, updateUserStringField, updateUserBooleanField, batchUpdateUserInfo } from '../services/userService';
+import sharp from 'sharp';
+
+// Extend Express Request interface to include user property
+declare global {
+  namespace Express {
+    interface User {
+      userId: string;
+      email?: string;
+      // add other properties if needed
+    }
+    interface Request {
+      user?: User;
+    }
+  }
+}
 
 export async function updateUserProfileImage(req: Request, res: Response) {
   try {
     const { userID } = req.body;
-    
+    const authenticatedUserID = req.user?.userId; // from auth middleware
+
     if (!userID) {
       return res.status(400).json({ error: 'User ID is required' });
     }
-
+    if (userID !== authenticatedUserID) {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
     if (!req.file) {
       return res.status(400).json({ error: 'Image file is required' });
     }
 
-    const imageBuffer = req.file.buffer;
-    const mimeType = req.file.mimetype;
+    // Optimize image with sharp
+    const optimizedBuffer = await sharp(req.file.buffer)
+      .resize(400, 400, { fit: 'cover' })
+      .jpeg({ quality: 80 })
+      .toBuffer();
 
-    // Validate image type
-    if (!mimeType.startsWith('image/')) {
-      return res.status(400).json({ error: 'File must be an image' });
-    }
+    const mimeType = 'image/jpeg';
 
-    const imageUrl = await updateProfileImage(userID, imageBuffer, mimeType);
-    
-    res.status(200).json({ 
+    const imageUrl = await updateProfileImage(userID, optimizedBuffer, mimeType);
+
+    res.status(200).json({
       message: 'Profile image updated successfully',
       imageUrl: imageUrl
     });
   } catch (error) {
     console.error('Error in updateUserProfileImage:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to update profile image' 
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to update profile image'
     });
   }
 }

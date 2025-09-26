@@ -13,11 +13,16 @@ if (!admin.apps.length) {
   }
 
   try {
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 
+                         FIREBASE_STORAGE_BUCKET || 
+                         (serviceAccount?.project_id ? `${serviceAccount.project_id}.firebasestorage.app` : undefined);
+    
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || (serviceAccount?.project_id ? `${serviceAccount.project_id}.appspot.com` : undefined),
+      storageBucket: storageBucket,
     });
     console.log('Firebase Admin SDK initialized successfully');
+    console.log('Storage bucket:', storageBucket);
   } catch (error) {
     console.error('Error initializing Firebase Admin SDK:', error);
     throw error;

@@ -85,6 +85,24 @@ interface DeleteGroupRequest extends AuthRequest {
   };
 }
 
+interface UpdateLocationRequest extends AuthRequest {
+  body: {
+    groupID: string;
+    userID: string;
+    location: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+}
+
+interface GetMemberLocationsRequest extends AuthRequest {
+  body: {
+    groupID: string;
+    userID: string;
+  };
+}
+
 // Get all groups where user is a member
 export const getGroups = async (req: GetGroupsRequest, res: Response) => {
   try {
@@ -416,6 +434,69 @@ export const deleteGroup = async (req: DeleteGroupRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to delete group'
+    });
+  }
+};
+
+// Update member location in group
+export const updateMemberLocation = async (req: UpdateLocationRequest, res: Response) => {
+  try {
+    console.log('📍 Updating location for user:', req.body.userID, 'in group:', req.body.groupID);
+    
+    const { groupID, userID, location } = req.body;
+    
+    if (!groupID || !userID || !location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Group ID, user ID, and valid location coordinates are required' 
+      });
+    }
+
+    await groupService.updateMemberLocation(groupID, userID, location);
+    
+    console.log('✅ Successfully updated member location');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Location updated successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error updating member location:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to update location'
+    });
+  }
+};
+
+// Get all member locations in group
+export const getGroupMemberLocations = async (req: GetMemberLocationsRequest, res: Response) => {
+  try {
+    console.log('🗺️ Getting member locations for group:', req.body.groupID);
+    
+    const { groupID, userID } = req.body;
+    
+    if (!groupID || !userID) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Group ID and user ID are required' 
+      });
+    }
+
+    const locations = await groupService.getGroupMemberLocations(groupID, userID);
+    
+    console.log('✅ Successfully retrieved member locations');
+    
+    res.status(200).json({
+      success: true,
+      data: locations,
+      message: 'Member locations retrieved successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error getting member locations:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to get member locations'
     });
   }
 };

@@ -38,6 +38,17 @@ export interface JoinGroupData {
   profileImage: string;
 }
 
+export interface MemberLocation {
+  userID: string;
+  userName: string;
+  profileImage: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  lastUpdated: admin.firestore.Timestamp;
+}
+
 // Generate a random 8-character invite code
 function generateInviteCode(): string {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -402,6 +413,84 @@ export async function deleteGroup(groupID: string, adminID: string): Promise<voi
     await groupRef.delete();
   } catch (error) {
     console.error('Error deleting group:', error);
+    throw error;
+  }
+}
+
+// Update member location in group
+export async function updateMemberLocation(
+  groupID: string, 
+  userID: string, 
+  location: { latitude: number; longitude: number }
+): Promise<void> {
+  try {
+    const groupRef = db.collection('groups').doc(groupID);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new Error('Group not found');
+    }
+
+    const groupData = groupDoc.data() as Group;
+    
+    // Check if user is a member of the group
+    const isMember = groupData.members.some(member => member.userID === userID && member.isApproved);
+    if (!isMember) {
+      throw new Error('User is not an approved member of this group');
+    }
+
+    // Update or create location document in subcollection
+    const locationRef = groupRef.collection('memberLocations').doc(userID);
+    const member = groupData.members.find(m => m.userID === userID);
+    
+    await locationRef.set({
+      userID,
+      userName: member?.name || 'Unknown',
+      profileImage: member?.profileImage || '',
+      location,
+      lastUpdated: admin.firestore.Timestamp.now()
+    });
+
+  } catch (error) {
+    console.error('Error updating member location:', error);
+    throw error;
+  }
+}
+
+// Get all member locations in group
+export async function getGroupMemberLocations(groupID: string, userID: string): Promise<MemberLocation[]> {
+  try {
+    const groupRef = db.collection('groups').doc(groupID);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new Error('Group not found');
+    }
+
+    const groupData = groupDoc.data() as Group;
+    
+    // Check if user is a member of the group
+    const isMember = groupData.members.some(member => member.userID === userID && member.isApproved);
+    if (!isMember) {
+      throw new Error('User is not an approved member of this group');
+    }
+
+    // Get all member locations from subcollection
+    const locationsSnapshot = await groupRef.collection('memberLocations').get();
+    const locations: MemberLocation[] = [];
+
+    locationsSnapshot.forEach(doc => {
+      const locationData = doc.data() as MemberLocation;
+      // Only include locations that are less than 1 hour old
+      const oneHourAgo = admin.firestore.Timestamp.fromDate(new Date(Date.now() - 60 * 60 * 1000));
+      if (locationData.lastUpdated.toMillis() > oneHourAgo.toMillis()) {
+        locations.push(locationData);
+      }
+    });
+
+    return locations;
+  } catch (error) {
+    console.error('Error getting member locations:', error);
     throw error;
   }
 }

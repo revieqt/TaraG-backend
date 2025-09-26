@@ -100,7 +100,9 @@ const fetchUserProfile = async (userId: string, email: string) => {
       isProfilePublic: true,
       isTravelInfoPublic: true,
       isPersonalInfoPublic: true
-    }
+    },
+    /** 🍐 TaraBuddy preferences */
+    taraBuddyPreference: userData.taraBuddyPreference || null
   };
 };
 

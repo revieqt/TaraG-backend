@@ -4,19 +4,23 @@ import cors from 'cors';
 import path from "path";
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import './config/firebase'; // Initialize Firebase Admin SDK
 import admin from 'firebase-admin';
 import authRouter from './routes/auth';
 import weatherRouter from './routes/weather';
 import itineraryRouter from './routes/itinerary';
 import contactRouter from './routes/contact';
 import alertRouter from './routes/alert';
-import notificationRouter from './routes/notification';
 import userRouter from './routes/user';
 import aiChatRouter from './routes/aiChat';
 import amenitiesRouter from './routes/amenities';
 import routeRouter from './routes/routes';
 import paymentRouter from './routes/payment';
 import groupRouter from './routes/group';
+import tourRouter from './routes/tour';
+import taraBuddyRouter from './routes/taraBuddy';
+import locationRouter from './routes/location';
+import placesRouter from './routes/places';
 
 dotenv.config();
 
@@ -40,34 +44,66 @@ app.use('/api/weather', weatherRouter);
 app.use('/api/itinerary', itineraryRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/alerts', alertRouter);
-app.use('/api/notifications', notificationRouter);
 app.use('/api/user', userRouter);
 app.use('/api/ai-chat', aiChatRouter);
 app.use('/api/amenities', amenitiesRouter);
 app.use('/api/routes', routeRouter);
 app.use('/api/payment', paymentRouter);
+app.use('/api/places', placesRouter);
 app.use('/api/groups', groupRouter);
+app.use('/api/tours', tourRouter);
+app.use('/api/location', locationRouter);
+app.use('/api/taraBuddy', taraBuddyRouter);
 
-// io.on('connection', (socket) => {
-//   console.log('User connected:', socket.id);
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
 
-//   socket.on('join-user', (userId: string) => {
-//     socket.join(`user-${userId}`);
-//     console.log(`User ${userId} joined room: user-${userId}`);
-//   });
+  // Join user-specific room for notifications
+  socket.on('join-user', (userId: string) => {
+    socket.join(`user-${userId}`);
+    console.log(`User ${userId} joined room: user-${userId}`);
+  });
 
-//   socket.on('create-notification', async (notificationData) => {
-//     try {
-//       io.to(`user-${notificationData.userID}`).emit('new-notification', notificationData);
-//     } catch (error) {
-//       console.error('Error handling notification creation:', error);
-//     }
-//   });
+  // Join group room for location sharing
+  socket.on('join-group', (data: { groupId: string, userId: string }) => {
+    socket.join(`group-${data.groupId}`);
+    console.log(`User ${data.userId} joined group room: group-${data.groupId}`);
+  });
 
-//   socket.on('disconnect', () => {
-//     console.log('User disconnected:', socket.id);
-//   });
-// });
+  // Leave group room
+  socket.on('leave-group', (data: { groupId: string, userId: string }) => {
+    socket.leave(`group-${data.groupId}`);
+    console.log(`User ${data.userId} left group room: group-${data.groupId}`);
+  });
+
+  // Handle location updates
+  socket.on('update-location', (data: { 
+    groupId: string, 
+    userId: string, 
+    userName: string,
+    profileImage: string,
+    location: { latitude: number, longitude: number },
+    timestamp: number 
+  }) => {
+    console.log(`Location update from user ${data.userId} in group ${data.groupId}`);
+    // Broadcast location to all other members in the group
+    socket.to(`group-${data.groupId}`).emit('member-location-update', data);
+  });
+
+  // Handle notification creation
+  socket.on('create-notification', async (notificationData) => {
+    try {
+      io.to(`user-${notificationData.userID}`).emit('new-notification', notificationData);
+    } catch (error) {
+      console.error('Error handling notification creation:', error);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
 
 // Make io available to other modules
 export { io };

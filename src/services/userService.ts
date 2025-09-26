@@ -2,15 +2,47 @@ import admin from 'firebase-admin';
 import { v4 as uuidv4 } from 'uuid';
 
 const db = admin.firestore();
-const bucket = admin.storage().bucket();
+const bucket = admin.storage().bucket(process.env.FIREBASE_STORAGE_BUCKET || 'taralets-3adb8.firebasestorage.app');
+
+// Helper function to delete profile image from Firebase Storage
+export async function deleteProfileImageFromStorage(imageUrl: string): Promise<void> {
+  if (!imageUrl || !imageUrl.includes('storage.googleapis.com') || !imageUrl.includes(bucket.name)) {
+    return; // Not our storage URL, skip deletion
+  }
+
+  try {
+    // Extract filename from URL
+    const urlParts = imageUrl.split('/');
+    const encodedFileName = urlParts[urlParts.length - 1];
+    const fileName = decodeURIComponent(encodedFileName);
+    
+    // Delete the file
+    const file = bucket.file(fileName);
+    await file.delete();
+    console.log(`Successfully deleted profile image: ${fileName}`);
+  } catch (error) {
+    console.warn('Failed to delete profile image from storage:', error);
+    // Don't throw error, as this is a cleanup operation
+  }
+}
 
 export async function updateProfileImage(userID: string, imageBuffer: Buffer, mimeType: string): Promise<string> {
   try {
-    // Generate unique filename
+    // Get current user data to check for existing profile image
+    const userDoc = await db.collection('users').doc(userID).get();
+    const userData = userDoc.data();
+    const currentProfileImage = userData?.profileImage;
+
+    // Delete old profile image if it exists
+    if (currentProfileImage) {
+      await deleteProfileImageFromStorage(currentProfileImage);
+    }
+
+    // Generate unique filename for new image
     const fileExtension = mimeType.split('/')[1];
     const fileName = `profileImages/${userID}_${uuidv4()}.${fileExtension}`;
     
-    // Upload to Firebase Storage
+    // Upload new image to Firebase Storage
     const file = bucket.file(fileName);
     await file.save(imageBuffer, {
       metadata: {
@@ -22,7 +54,7 @@ export async function updateProfileImage(userID: string, imageBuffer: Buffer, mi
     // Get the public URL
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
     
-    // Update Firestore document
+    // Update Firestore document with new profile image URL
     await db.collection('users').doc(userID).update({
       profileImage: publicUrl,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()

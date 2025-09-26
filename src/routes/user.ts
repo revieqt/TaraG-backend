@@ -21,8 +21,8 @@ const upload = multer({
   }
 });
 
-// Update profile image endpoint
-router.post('/update-profile-image', upload.single('image'), updateUserProfileImage);
+// Update profile image endpoint (protected)
+router.post('/update-profile-image', authMiddleware, upload.single('image'), updateUserProfileImage);
 
 // Update bio endpoint
 router.put('/update-bio', updateUserBio);
@@ -55,4 +55,4 @@ router.use((error: any, req: express.Request, res: express.Response, next: expre
   next(error);
 });
 
-export default router; 
+export default router;

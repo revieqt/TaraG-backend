@@ -2,6 +2,39 @@ import admin from '../config/firebase';
 import { ORS_API_KEY } from '../config/apiKeys';
 import axios from 'axios';
 
+// Simple polyline decoder for encoded geometry
+function decodePolyline(encoded: string): [number, number][] {
+  const coordinates: [number, number][] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+
+    coordinates.push([lng / 1e5, lat / 1e5]);
+  }
+
+  return coordinates;
+}
+
 const db = admin.firestore();
 
 export async function createRoute(data: {
@@ -38,24 +71,41 @@ export async function getRoutes(data: {
   try {
     const apiKey = ORS_API_KEY;
     const coordinates = data.location.map(loc => [loc.longitude, loc.latitude]);
-    const url = `https://api.openrouteservice.org/v2/directions/${data.mode}`;
+    
+    // Map mode to correct OpenRouteService profile
+    const profileMap: { [key: string]: string } = {
+      'driving-car': 'driving-car',
+      'cycling-regular': 'cycling-regular', 
+      'foot-walking': 'foot-walking',
+      'foot-hiking': 'foot-hiking'
+    };
+    
+    const profile = profileMap[data.mode] || 'driving-car';
+    const url = `https://api.openrouteservice.org/v2/directions/${profile}`;
     const params = {
       coordinates,
       instructions: true,
       geometry: true,
       elevation: false,
-      extra_info: ['waytype', 'surface'],
-      continue_straight: false,
-      format: 'json'
+      continue_straight: false
     };
 
-    console.log('🗺️ Calling OpenRouteService:', { url, coordinates, mode: data.mode });
+    console.log('🗺️ Calling OpenRouteService:', { url, coordinates, mode: data.mode, params });
 
     const response = await axios.post(url, params, {
       headers: {
         'Authorization': apiKey,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
+    }).catch(error => {
+      console.error('❌ OpenRouteService API Error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url,
+        params
+      });
+      throw error;
     });
 
     console.log('✅ OpenRouteService response:', response.status);
@@ -80,10 +130,37 @@ export async function getRoutes(data: {
       })) || []
     })) || [];
 
+    // Log the raw geometry to debug
+    console.log('🔍 Raw geometry from ORS:', {
+      type: typeof route.geometry,
+      hasCoordinates: !!route.geometry?.coordinates,
+      coordinateCount: route.geometry?.coordinates?.length || 0,
+      geometryType: route.geometry?.type,
+      firstCoord: route.geometry?.coordinates?.[0],
+      isString: typeof route.geometry === 'string'
+    });
+
+    // Handle geometry - could be coordinates array or encoded string
+    let geometryCoordinates: [number, number, number?][] = [];
+    
+    if (route.geometry?.coordinates && Array.isArray(route.geometry.coordinates)) {
+      // Already decoded coordinates
+      geometryCoordinates = route.geometry.coordinates;
+      console.log('✅ Using decoded coordinates from API');
+    } else if (typeof route.geometry === 'string') {
+      // Encoded polyline string
+      console.log('🔧 Decoding polyline string');
+      const decoded = decodePolyline(route.geometry);
+      geometryCoordinates = decoded.map(coord => [coord[0], coord[1]]);
+    } else if (route.geometry && typeof route.geometry === 'object' && 'coordinates' in route.geometry) {
+      // GeoJSON format
+      geometryCoordinates = route.geometry.coordinates || [];
+    }
+
     const result = {
       geometry: {
-        coordinates: route.geometry?.coordinates || [],
-        type: route.geometry?.type || 'LineString'
+        coordinates: geometryCoordinates,
+        type: 'LineString'
       },
       distance: route.summary.distance, // meters
       duration: route.summary.duration, // seconds
@@ -92,9 +169,11 @@ export async function getRoutes(data: {
     };
 
     console.log('🎯 Route result with segments:', {
-      ...result,
+      distance: `${(result.distance / 1000).toFixed(2)} km`,
+      duration: `${Math.round(result.duration / 60)} min`,
       segmentCount: segments.length,
-      totalSteps: segments.reduce((acc: number, seg: any) => acc + (seg.steps?.length || 0), 0)
+      totalSteps: segments.reduce((acc: number, seg: any) => acc + (seg.steps?.length || 0), 0),
+      coordinateCount: result.geometry.coordinates.length
     });
     
     return result;
